@@ -8,6 +8,7 @@ import { TrashIcon } from './components/icons/TrashIcon';
 import { ArrowUpIcon } from './components/icons/ArrowUpIcon';
 import { ArrowDownIcon } from './components/icons/ArrowDownIcon';
 import { AddIcon } from './components/icons/AddIcon';
+import { DownloadIcon } from './components/icons/DownloadIcon';
 
 
 // TypeScript declaration for the jsPDF library loaded from CDN
@@ -224,6 +225,37 @@ const Previewer: React.FC<PreviewerProps> = ({ previews, isConverting, imageQual
     );
   };
   
+interface DownloadReadyProps {
+  url: string;
+  onReset: () => void;
+}
+
+const DownloadReady: React.FC<DownloadReadyProps> = ({ url, onReset }) => (
+  <div className="w-full max-w-md mx-auto text-center bg-slate-800/50 border border-slate-700 rounded-lg p-8 animate-fade-in">
+    <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Your PDF is Ready! 🎉</h2>
+    <p className="text-slate-400 mb-8">Click the button below to download your file.</p>
+    <div className="flex flex-col items-center gap-4">
+      <a
+        href={url}
+        download="converted-images.pdf"
+        className="flex items-center justify-center gap-3 w-full max-w-xs px-5 py-3 font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        aria-label="Download the generated PDF"
+      >
+        <DownloadIcon className="w-6 h-6" />
+        <span>Download PDF</span>
+      </a>
+      <button
+        onClick={onReset}
+        className="flex items-center justify-center gap-2 w-full max-w-xs px-5 py-3 font-semibold text-white bg-slate-600 hover:bg-slate-500 rounded-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+        aria-label="Create another PDF"
+      >
+        <ResetIcon className="w-5 h-5" />
+        Create Another PDF 🔄
+      </button>
+    </div>
+  </div>
+);
+
 interface ModalProps {
   title: string;
   onClose: () => void;
@@ -331,13 +363,29 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [modalContent, setModalContent] = useState<{title: string; content: React.ReactNode} | null>(null);
   const [imageQuality, setImageQuality] = useState<number>(92);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+  // Using a ref to hold the current previews for cleanup on unmount.
+  // This prevents the effect from re-running every time previews are added,
+  // which was causing premature URL revocation.
+  const previewsRef = useRef(imagePreviews);
+  previewsRef.current = imagePreviews;
 
   useEffect(() => {
-    // Cleanup function to revoke object URLs
+    // This effect cleans up the PDF blob URL when it's no longer needed (e.g., on reset or unmount).
     return () => {
-      imagePreviews.forEach(p => URL.revokeObjectURL(p.url));
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
     };
-  }, [imagePreviews]);
+  }, [pdfUrl]);
+
+  useEffect(() => {
+    // This effect cleans up all image preview URLs on component unmount to prevent memory leaks.
+    return () => {
+      previewsRef.current.forEach(p => URL.revokeObjectURL(p.url));
+    };
+  }, []); // Empty dependency array ensures this runs only on mount and unmount.
   
   const processFiles = (files: FileList) => {
     setError(null);
@@ -362,6 +410,8 @@ export default function App() {
     imagePreviews.forEach(p => URL.revokeObjectURL(p.url));
     setImagePreviews([]);
     setError(null);
+    // The useEffect for pdfUrl will handle revoking the object URL when state is set to null
+    setPdfUrl(null);
   }, [imagePreviews]);
 
   const handleRemoveImage = useCallback((indexToRemove: number) => {
@@ -429,7 +479,12 @@ export default function App() {
         }
 
         if (pdf) {
-            pdf.save('converted-images.pdf');
+            const pdfBlob = pdf.output('blob');
+            const url = URL.createObjectURL(pdfBlob);
+            setPdfUrl(url);
+
+            imagePreviews.forEach(p => URL.revokeObjectURL(p.url));
+            setImagePreviews([]);
         }
 
     } catch (err: any) {
@@ -491,7 +546,9 @@ export default function App() {
     <div className="min-h-screen bg-slate-900 text-white flex flex-col p-2 sm:p-4">
       <Header />
       <main className="flex-grow flex items-center justify-center py-8">
-        {imagePreviews.length === 0 ? (
+        {pdfUrl ? (
+          <DownloadReady url={pdfUrl} onReset={handleReset} />
+        ) : imagePreviews.length === 0 ? (
           <Uploader onFileUpload={processFiles} error={error} />
         ) : (
           <Previewer
