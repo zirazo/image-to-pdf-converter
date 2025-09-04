@@ -1,0 +1,5 @@
+{
+  "name": "Copy of Image to PDF Converter",
+  "description": "A simple and fast web application to convert PNG or JPG images directly into a downloadable PDF document in your browser.",
+  "requestFramePermissions": []
+}
