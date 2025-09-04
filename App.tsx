@@ -44,12 +44,6 @@ interface UploaderProps {
 }
 
 const Uploader: React.FC<UploaderProps> = ({ onFileUpload, error }) => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleLabelClick = () => {
-        fileInputRef.current?.click();
-    };
-
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             onFileUpload(e.target.files);
@@ -60,8 +54,7 @@ const Uploader: React.FC<UploaderProps> = ({ onFileUpload, error }) => {
     return (
         <div className="w-full max-w-lg mx-auto">
             <label
-              onClick={handleLabelClick}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleLabelClick(); }}
+              htmlFor="file-upload"
               tabIndex={0}
               className="relative block w-full h-60 sm:h-64 rounded-lg border-2 border-dashed border-slate-600 hover:border-indigo-500 transition-colors duration-300 group cursor-pointer flex flex-col items-center justify-center text-center p-4"
               aria-label="Upload images"
@@ -73,7 +66,6 @@ const Uploader: React.FC<UploaderProps> = ({ onFileUpload, error }) => {
                 <span className="text-sm">Supports: PNG, JPG ✅</span>
               </div>
               <input
-                ref={fileInputRef}
                 id="file-upload"
                 name="file-upload"
                 type="file"
